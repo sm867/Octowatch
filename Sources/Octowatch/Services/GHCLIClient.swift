@@ -64,12 +64,13 @@ actor GHCLIClient {
         let openPRs: Int?
         /// Rollup of all checks on the default branch's head commit; nil when it has none.
         let checks: AggregateStatus?
+        let pushedAt: Date?
     }
 
     /// Open PR count and head-commit check state, keyed by "owner/name".
     func fetchRepoInfo(_ repos: [LocalRepo]) async throws -> [String: RepoInfo] {
         let selection =
-            "pullRequests(states: OPEN) { totalCount } "
+            "pushedAt pullRequests(states: OPEN) { totalCount } "
             + "defaultBranchRef { target { ... on Commit { statusCheckRollup { state } } } }"
 
         var result: [String: RepoInfo] = [:]
@@ -85,7 +86,8 @@ actor GHCLIClient {
             case "PENDING", "EXPECTED": checks = .inProgress
             default: checks = nil
             }
-            result[key] = RepoInfo(openPRs: prs, checks: checks)
+            let pushedAt = (repo["pushedAt"] as? String).flatMap { ISO8601DateFormatter().date(from: $0) }
+            result[key] = RepoInfo(openPRs: prs, checks: checks, pushedAt: pushedAt)
         }
         return result
     }

@@ -53,5 +53,6 @@ struct RepoSummary: Identifiable, Sendable {
     let status: AggregateStatus
     let openPRs: Int?
     let url: URL?
+    var lastActivity: Date? = nil
     var id: String { fullName }
 }

@@ -221,10 +221,22 @@ final class WorkflowViewModel {
                 name: repo.name,
                 status: info?.checks ?? .idle,
                 openPRs: info?.openPRs,
-                url: URL(string: repo.htmlUrl))
+                url: URL(string: repo.htmlUrl),
+                lastActivity: info?.pushedAt)
         }
         .sorted {
-            if $0.status.sortRank != $1.status.sortRank { return $0.status.sortRank < $1.status.sortRank }
+            // Tier 0: failed/running; tier 1: open PRs (most first); tier 2: most recent activity.
+            if $0.tier != $1.tier { return $0.tier < $1.tier }
+            switch $0.tier {
+            case 0:
+                if $0.status.sortRank != $1.status.sortRank { return $0.status.sortRank < $1.status.sortRank }
+            case 1:
+                if $0.openPRs != $1.openPRs { return ($0.openPRs ?? 0) > ($1.openPRs ?? 0) }
+            default:
+                if $0.lastActivity != $1.lastActivity {
+                    return ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast)
+                }
+            }
             return $0.name.lowercased() < $1.name.lowercased()
         }
     }
@@ -264,6 +276,15 @@ final class WorkflowViewModel {
 }
 
 // MARK: - Sorting
+
+extension RepoSummary {
+    var tier: Int {
+        switch status {
+        case .failed, .mixed, .inProgress: return 0
+        default: return (openPRs ?? 0) > 0 ? 1 : 2
+        }
+    }
+}
 
 extension AggregateStatus {
     /// Failing repos first, then running, unknown, and healthy last.

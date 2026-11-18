@@ -92,9 +92,6 @@ Building from source with `make run` avoids this.
 - [Hugo Bourget](https://github.com/hbourget) — original author of [Octowatch](https://github.com/hbourget/Octowatch)
 - [sm867](https://github.com/sm867) — this version: GitHub CLI integration instead of a personal access token, local repository discovery
 
-## Support
-
-Questions, bug reports, or feature requests? Open an [issue](https://github.com/sm867/Octowatch/issues).
 
 ## License
 
