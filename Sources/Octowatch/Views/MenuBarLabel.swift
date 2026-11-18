@@ -1,34 +1,19 @@
 import SwiftUI
 
 struct MenuBarLabel: View {
-    let repoStatuses: [RepoStatusItem]
+    let status: AggregateStatus
     let pulsePhase: Bool
 
     var body: some View {
-        if repoStatuses.isEmpty {
-            Image(systemName: "circle.dashed")
-                .symbolRenderingMode(.hierarchical)
-        } else {
-            Image(nsImage: renderBubbles())
-        }
+        Image(nsImage: renderIcon())
     }
 
     @MainActor
-    private func renderBubbles() -> NSImage {
-        let content = HStack(spacing: 3) {
-            ForEach(repoStatuses) { item in
-                ZStack {
-                    Circle()
-                        .fill(item.status.bubbleColor)
-                        .frame(width: 16, height: 16)
-
-                    Text(String(item.initial))
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                .opacity(item.status == .inProgress ? (pulsePhase ? 1.0 : 0.4) : 1.0)
-            }
-        }
+    private func renderIcon() -> NSImage {
+        let content = Image(systemName: status.iconName)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(status.bubbleColor)
+            .opacity(status == .inProgress ? (pulsePhase ? 1.0 : 0.4) : 1.0)
 
         let renderer = ImageRenderer(content: content)
         renderer.scale = 2.0

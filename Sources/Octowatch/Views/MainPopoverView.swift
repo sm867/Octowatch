@@ -6,7 +6,7 @@ struct MainPopoverView: View {
     var body: some View {
         Group {
             if !viewModel.isAuthenticated {
-                SignInView(viewModel: viewModel)
+                GHSetupView(viewModel: viewModel)
             } else if viewModel.showSettings {
                 SettingsView(viewModel: viewModel) {
                     viewModel.showSettings = false
@@ -33,18 +33,35 @@ struct MainPopoverView: View {
                 errorBanner(error)
             }
 
-            WorkflowRunListView(
-                runs: viewModel.runs,
-                isLoading: viewModel.isLoading
-            )
+            if viewModel.reposFolder.isEmpty {
+                chooseFolderPrompt
+            } else {
+                RepoListView(
+                    repos: viewModel.repoSummaries,
+                    pulsePhase: viewModel.pulsePhase,
+                    isLoading: viewModel.isLoading
+                )
+            }
 
             Divider()
 
-            FooterView(
-                username: viewModel.username,
-                onSignOut: { viewModel.signOut() }
-            )
+            FooterView(username: viewModel.username)
         }
+    }
+
+    private var chooseFolderPrompt: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Text("Choose the folder with your git clones")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Button("Choose Folder…") {
+                FolderPicker.choose { viewModel.setReposFolder($0) }
+            }
+            .buttonStyle(.borderedProminent)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func errorBanner(_ message: String) -> some View {

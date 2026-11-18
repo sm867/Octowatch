@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Octowatch is a native macOS menu bar application (SwiftUI) that monitors GitHub Actions workflow runs across multiple repositories. It uses a GitHub Personal Access Token for authentication, stores it in the macOS Keychain, and polls the GitHub REST API at configurable intervals.
+Octowatch is a native macOS menu bar application (SwiftUI) that monitors GitHub Actions workflow runs across multiple repositories. It talks to GitHub exclusively through the `gh` CLI (no tokens handled by the app). Repositories are discovered by scanning a user-chosen local folder for git repos with a GitHub `origin`, then status is polled at configurable intervals via batched `gh api graphql` calls.
 
 ## Build & Run Commands
 
@@ -28,26 +28,28 @@ There are no tests, linter, or formatter configured in this project.
 ### Data Flow
 
 ```
-GitHubActionsBarApp (@main)
+OctowatchApp (@main)
 └── MenuBarExtra
     ├── MenuBarLabel ← reads aggregateStatus
     └── MainPopoverView ← owns WorkflowViewModel
-        ├── SignInView (unauthenticated)
+        ├── GHSetupView (gh missing / not signed in)
         ├── SettingsView (polling interval, repo selection)
         └── Authenticated content (header, run list, footer)
 ```
 
 ### Key Components
 
-- **WorkflowViewModel** (`ViewModels/WorkflowViewModel.swift`): Single source of truth. Manages auth state, polling loop, API calls, notification triggers, and persisted settings (UserDefaults for preferences, Keychain for PAT).
-- **GitHubAPIClient** (`Services/GitHubAPIClient.swift`): Swift `actor` wrapping GitHub REST API calls. Uses `TaskGroup` for parallel multi-repo fetching.
-- **KeychainService** (`Services/KeychainService.swift`): Static methods for secure PAT storage. Service ID: `com.hugobourget.Octowatch`.
+- **WorkflowViewModel** (`ViewModels/WorkflowViewModel.swift`): Single source of truth. Manages gh auth state, polling loop, notification triggers, and persisted settings (UserDefaults: polling interval, sound, selected repos, repos folder).
+- **GHCLIClient** (`Services/GHCLIClient.swift`): Swift `actor` that runs `gh` via `Process` (fixed PATH, timeout watchdog, exit code 4 = not authenticated) and batches repo queries into GraphQL calls.
+- **LocalRepoScanner** (`Services/LocalRepoScanner.swift`): Walks the chosen folder to find git repos and parses their `origin` remote.
 - **NotificationService** (`Services/NotificationService.swift`): Sends macOS notifications when workflow runs complete.
-- **Models** (`Models/WorkflowRun.swift`): All data models in one file — `WorkflowRun`, `Repository`, `GitHubUser`, status/conclusion enums, and `AggregateStatus`.
+- **Models** (`Models/WorkflowRun.swift`): `Repository`, `RepoSummary`, `GitHubUser` and `AggregateStatus`.
 
 ### Key Patterns
 
 - Swift 6.0 strict concurrency (`actor` for API client, `@MainActor` for ViewModel, `Sendable` models)
+- Never handle credentials; always go through `gh`
+- `make build` (not bare `swift build`) works around the Command Line Tools SDK macro issue
 - Zero external dependencies — only Swift stdlib, Foundation, SwiftUI, and UserNotifications
 - `LSUIElement: true` in Info.plist (menu bar only, no dock icon)
 - macOS 14.0+ minimum deployment target

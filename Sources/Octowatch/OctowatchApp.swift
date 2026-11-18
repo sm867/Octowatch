@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct GitHubActionsBarApp: App {
+struct OctowatchApp: App {
     @State private var viewModel = WorkflowViewModel()
 
     var body: some Scene {
@@ -9,7 +9,7 @@ struct GitHubActionsBarApp: App {
             MainPopoverView(viewModel: viewModel)
                 .frame(width: 400, height: 500)
         } label: {
-            MenuBarLabel(repoStatuses: viewModel.repoStatuses, pulsePhase: viewModel.pulsePhase)
+            MenuBarLabel(status: viewModel.aggregateStatus, pulsePhase: viewModel.pulsePhase)
         }
         .menuBarExtraStyle(.window)
     }

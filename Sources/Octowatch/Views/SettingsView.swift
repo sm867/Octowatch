@@ -8,9 +8,9 @@ struct SettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private let intervals: [(label: String, value: TimeInterval)] = [
-        ("1 second", 1),
-        ("3 seconds", 3),
-        ("15 seconds", 15),
+        ("1 minute", 60),
+        ("5 minutes", 300),
+        ("15 minutes", 900),
     ]
 
     var body: some View {
@@ -85,6 +85,25 @@ struct SettingsView: View {
 
                     Divider()
 
+                    // Repos folder
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Repositories Folder")
+                            .font(.callout.bold())
+
+                        Text(viewModel.reposFolder.isEmpty ? "Not set" : viewModel.reposFolder)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+
+                        Button("Choose Folder…") {
+                            FolderPicker.choose { viewModel.setReposFolder($0) }
+                        }
+                        .controlSize(.small)
+                    }
+
+                    Divider()
+
                     // Repo selection
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -99,7 +118,7 @@ struct SettingsView: View {
                         }
 
                         if viewModel.repos.isEmpty {
-                            Text("No repositories found.")
+                            Text("No GitHub clones found in the folder.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {

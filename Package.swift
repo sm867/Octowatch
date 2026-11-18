@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Octowatch",
-            path: "Sources/GitHubActionsBar"
+            path: "Sources/Octowatch"
         )
     ]
 )

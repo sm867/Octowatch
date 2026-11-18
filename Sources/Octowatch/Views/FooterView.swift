@@ -2,7 +2,6 @@ import SwiftUI
 
 struct FooterView: View {
     let username: String
-    let onSignOut: () -> Void
 
     var body: some View {
         HStack {
@@ -12,16 +11,6 @@ struct FooterView: View {
                 .lineLimit(1)
 
             Spacer()
-
-            Button("Sign Out") {
-                onSignOut()
-            }
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            Text("·")
-                .foregroundStyle(.quaternary)
 
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
