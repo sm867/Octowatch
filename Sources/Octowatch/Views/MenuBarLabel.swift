@@ -13,7 +13,6 @@ struct MenuBarLabel: View {
         let content = Image(systemName: status.iconName)
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(status.bubbleColor)
-            .opacity(status == .inProgress ? (pulsePhase ? 1.0 : 0.4) : 1.0)
 
         let renderer = ImageRenderer(content: content)
         renderer.scale = 2.0
