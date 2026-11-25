@@ -55,6 +55,7 @@ final class WorkflowViewModel {
     private var pollingTask: Task<Void, Never>?
     private var pulseTask: Task<Void, Never>?
     private var wakeTask: Task<Void, Never>?
+    private var retryLoad = false
     private var previousStatuses: [String: AggregateStatus] = [:]
 
     // MARK: - Init
@@ -72,8 +73,17 @@ final class WorkflowViewModel {
                 named: NSWorkspace.didWakeNotification)
             {
                 try? await Task.sleep(for: .seconds(3))  // let the network come back
-                await self?.fetchStatuses()
+                await self?.tick()
             }
+        }
+    }
+
+    /// One scheduled refresh; retries the full load while not signed in (e.g. network was down at launch).
+    private func tick() async {
+        if isAuthenticated {
+            await fetchStatuses()
+        } else if retryLoad {
+            await loadInitialData()
         }
     }
 
@@ -101,17 +111,25 @@ final class WorkflowViewModel {
             errorMessage = error.localizedDescription
             isLoading = false
             // Transient failures (network, timeout) must not kill auto-refresh.
-            if isAuthenticated, case GHError.commandFailed = error {
-                startPolling()
+            if case GHError.commandFailed = error {
+                retryLoad = true
+                if pollingTask == nil { startPolling() }
                 return
             }
+            retryLoad = false
             isAuthenticated = false
             stopPolling()
             stopPulse()
             return
         }
 
-        repos = await discoverRepos()
+        retryLoad = false
+        do {
+            repos = try await discoverRepos()
+        } catch {
+            // Keep polling; fetchStatuses re-runs discovery while the repo list is empty.
+            errorMessage = error.localizedDescription
+        }
 
         // Select all repos by default if none selected
         if selectedRepoFullNames.isEmpty {
@@ -119,16 +137,16 @@ final class WorkflowViewModel {
         }
 
         await fetchStatuses()
-        startPolling()
+        if pollingTask == nil { startPolling() }
         startPulse()
         isLoading = false
     }
 
-    private func discoverRepos() async -> [Repository] {
+    private func discoverRepos() async throws -> [Repository] {
         guard !reposFolder.isEmpty else { return [] }
         let root = URL(fileURLWithPath: reposFolder)
         let local = await Task.detached { LocalRepoScanner.scan(root: root) }.value
-        let repos = (try? await client.fetchRepositories(local)) ?? []
+        let repos = local.isEmpty ? [] : try await client.fetchRepositories(local)
         return repos.sorted { $0.fullName.lowercased() < $1.fullName.lowercased() }
     }
 
@@ -136,6 +154,16 @@ final class WorkflowViewModel {
     func fetchStatuses() async {
         guard isAuthenticated else { return }
         errorMessage = nil
+
+        if repos.isEmpty, !reposFolder.isEmpty {
+            do {
+                repos = try await discoverRepos()
+                if selectedRepoFullNames.isEmpty { selectedRepoFullNames = Set(repos.map(\.fullName)) }
+            } catch {
+                handleError(error)
+                return
+            }
+        }
 
         let activeRepos = repos.filter { selectedRepoFullNames.contains($0.fullName) }
         guard !activeRepos.isEmpty else {
@@ -176,7 +204,7 @@ final class WorkflowViewModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(pollingInterval))
                 guard !Task.isCancelled else { break }
-                await fetchStatuses()
+                await tick()
             }
         }
     }
